@@ -155,6 +155,7 @@ const DashboardPage = () => {
 
     const handleExport = async () => {
         try {
+            console.log('Starting CSV Export...');
             const response = await api.get('/transactions/export', { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
             const link = document.createElement('a');
@@ -163,8 +164,11 @@ const DashboardPage = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
-        } catch {
-            alert('Export failed');
+            window.URL.revokeObjectURL(url);
+            console.log('Export successful');
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export failed. Please check the console for details.');
         }
     };
 
