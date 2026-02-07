@@ -11,12 +11,16 @@ export const exportToCSV = async (req: AuthRequest, res: Response) => {
         let transactions;
         if (userRole === 'ADMIN') {
             transactions = await prisma.transaction.findMany({
-                include: { user: { select: { email: true } } },
+                include: {
+                    user: { select: { email: true } },
+                    category: { select: { name: true } }
+                },
                 orderBy: { date: 'desc' }
             });
         } else {
             transactions = await prisma.transaction.findMany({
                 where: { userId },
+                include: { category: { select: { name: true } } },
                 orderBy: { date: 'desc' }
             });
         }
@@ -24,7 +28,7 @@ export const exportToCSV = async (req: AuthRequest, res: Response) => {
         const data = transactions.map((t: any) => ({
             Date: (t.date as Date).toISOString().split('T')[0],
             Type: t.type,
-            Category: t.category,
+            Category: t.category?.name || 'N/A',
             Amount: t.amount,
             Description: t.description,
             User: t.user?.email || 'Self'

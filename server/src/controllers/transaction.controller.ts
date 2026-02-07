@@ -38,7 +38,7 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
             data: {
                 amount: parseFloat(amount),
                 description,
-                categoryId,
+                category: { connect: { id: categoryId } },
                 type,
                 date: date ? new Date(date) : new Date(),
                 userId: userId!
@@ -70,7 +70,7 @@ export const updateTransaction = async (req: AuthRequest, res: Response) => {
             data: {
                 amount: amount ? parseFloat(amount) : undefined,
                 description,
-                categoryId,
+                category: categoryId ? { connect: { id: categoryId } } : undefined,
                 type,
                 date: date ? new Date(date) : undefined
             },

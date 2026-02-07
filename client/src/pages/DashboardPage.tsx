@@ -27,12 +27,19 @@ const DashboardPage = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [showForm, setShowForm] = useState(false);
+    const [showCategoryForm, setShowCategoryForm] = useState(false);
+
     const [formData, setFormData] = useState({
         amount: '',
         description: '',
         categoryId: '',
         type: 'EXPENSE' as 'INCOME' | 'EXPENSE',
         date: new Date().toISOString().split('T')[0]
+    });
+
+    const [catFormData, setCatFormData] = useState({
+        name: '',
+        type: 'EXPENSE' as 'INCOME' | 'EXPENSE'
     });
 
     const fetchTransactions = async () => {
@@ -48,8 +55,7 @@ const DashboardPage = () => {
         try {
             const { data } = await api.get('/categories');
             setCategories(data);
-            // Set first available category as default if none selected
-            if (data.length > 0) {
+            if (data.length > 0 && !formData.categoryId) {
                 const expenseCats = data.filter((c: Category) => c.type === 'EXPENSE');
                 if (expenseCats.length > 0) {
                     setFormData(prev => ({ ...prev, categoryId: expenseCats[0].id }));
@@ -69,9 +75,8 @@ const DashboardPage = () => {
         return categories.filter(cat => cat.type === formData.type);
     }, [categories, formData.type]);
 
-    // Update categoryId when type changes
     useEffect(() => {
-        if (filteredCategories.length > 0) {
+        if (filteredCategories.length > 0 && !filteredCategories.find(c => c.id === formData.categoryId)) {
             setFormData(prev => ({ ...prev, categoryId: filteredCategories[0].id }));
         }
     }, [formData.type, filteredCategories]);
@@ -126,6 +131,18 @@ const DashboardPage = () => {
         }
     };
 
+    const handleAddCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.post('/categories', catFormData);
+            setShowCategoryForm(false);
+            setCatFormData({ name: '', type: 'EXPENSE' });
+            fetchCategories();
+        } catch {
+            alert('Failed to add category');
+        }
+    };
+
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure?')) return;
         try {
@@ -156,16 +173,39 @@ const DashboardPage = () => {
             <Navbar />
             <div className="container">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                    <h1>Dashboard</h1>
+                    <h1>Dashboard 2.0v</h1>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button className="btn-primary" onClick={() => setShowForm(!showForm)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Plus size={18} /> Add Transaction
+                        </button>
+                        <button className="btn-primary" onClick={() => setShowCategoryForm(!showCategoryForm)} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#6366f1' }}>
+                            <Plus size={18} /> Add Category
                         </button>
                         <button className="btn-primary" onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#475569' }}>
                             <Download size={18} /> Export CSV
                         </button>
                     </div>
                 </div>
+
+                {showCategoryForm && (
+                    <div className="glass" style={{ padding: '24px', marginBottom: '30px', animation: 'fadeIn 0.3s' }}>
+                        <h2>New Category</h2>
+                        <form onSubmit={handleAddCategory} style={{ display: 'flex', gap: '20px', marginTop: '20px', alignItems: 'flex-end' }}>
+                            <div className="input-group" style={{ flex: 2 }}>
+                                <label>Category Name</label>
+                                <input type="text" value={catFormData.name} onChange={e => setCatFormData({ ...catFormData, name: e.target.value })} required placeholder="e.g. Subscriptions" />
+                            </div>
+                            <div className="input-group" style={{ flex: 1 }}>
+                                <label>Type</label>
+                                <select value={catFormData.type} onChange={e => setCatFormData({ ...catFormData, type: e.target.value as 'INCOME' | 'EXPENSE' })}>
+                                    <option value="INCOME">Income</option>
+                                    <option value="EXPENSE">Expense</option>
+                                </select>
+                            </div>
+                            <button type="submit" className="btn-primary">Add</button>
+                        </form>
+                    </div>
+                )}
 
                 {showForm && (
                     <div className="glass" style={{ padding: '24px', marginBottom: '30px', animation: 'fadeIn 0.3s' }}>
@@ -180,18 +220,18 @@ const DashboardPage = () => {
                                 <input type="text" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} required />
                             </div>
                             <div className="input-group">
+                                <label>Type</label>
+                                <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as 'INCOME' | 'EXPENSE' })}>
+                                    <option value="INCOME">Income</option>
+                                    <option value="EXPENSE">Expense</option>
+                                </select>
+                            </div>
+                            <div className="input-group">
                                 <label>Category</label>
                                 <select value={formData.categoryId} onChange={e => setFormData({ ...formData, categoryId: e.target.value })}>
                                     {filteredCategories.map(cat => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
-                                </select>
-                            </div>
-                            <div className="input-group">
-                                <label>Type</label>
-                                <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as 'INCOME' | 'EXPENSE' })}>
-                                    <option value="INCOME">Income</option>
-                                    <option value="EXPENSE">Expense</option>
                                 </select>
                             </div>
                             <div className="input-group">
