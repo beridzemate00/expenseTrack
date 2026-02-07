@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
     const adminPassword = await bcrypt.hash('admin123', 10);
 
-    await prisma.user.upsert({
+    const user1 = await prisma.user.upsert({
         where: { email: 'admin@example.com' },
         update: {},
         create: {
@@ -18,7 +18,7 @@ async function main() {
     });
 
     const userPassword = await bcrypt.hash('user123', 10);
-    await prisma.user.upsert({
+    const user2 = await prisma.user.upsert({
         where: { email: 'user@example.com' },
         update: {},
         create: {
@@ -29,7 +29,36 @@ async function main() {
         },
     });
 
-    console.log('Seed completed: admin@example.com / admin123, user@example.com / user123');
+    const categories = [
+        { name: 'Salary', type: 'INCOME' as const },
+        { name: 'Freelance', type: 'INCOME' as const },
+        { name: 'Investments', type: 'INCOME' as const },
+        { name: 'Food', type: 'EXPENSE' as const },
+        { name: 'Rent', type: 'EXPENSE' as const },
+        { name: 'Transport', type: 'EXPENSE' as const },
+        { name: 'Entertainment', type: 'EXPENSE' as const },
+        { name: 'Shopping', type: 'EXPENSE' as const },
+        { name: 'Health', type: 'EXPENSE' as const },
+        { name: 'General', type: 'EXPENSE' as const },
+    ];
+
+    for (const cat of categories) {
+        const existing = await prisma.category.findFirst({
+            where: { name: cat.name, userId: null }
+        });
+
+        if (!existing) {
+            await prisma.category.create({
+                data: {
+                    name: cat.name,
+                    type: cat.type,
+                    userId: null,
+                },
+            });
+        }
+    }
+
+    console.log('Seed completed: admin@example.com / admin123, user@example.com / user123, and default categories.');
 }
 
 main()

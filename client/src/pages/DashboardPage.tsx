@@ -4,22 +4,36 @@ import Navbar from '../components/Navbar';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Download, Plus, Trash2 } from 'lucide-react';
 
+interface Category {
+    id: string;
+    name: string;
+    type: 'INCOME' | 'EXPENSE';
+}
+
 interface Transaction {
     id: string;
     amount: number;
     description: string;
-    category: string;
+    categoryId: string;
+    category: { name: string };
     type: 'INCOME' | 'EXPENSE';
     date: string;
     user?: { name: string; email: string };
 }
 
-const COLORS = ['#10b981', '#ef4444', '#6366f1', '#f59e0b', '#ec4899'];
+const COLORS = ['#10b981', '#ef4444', '#6366f1', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
 
 const DashboardPage = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ amount: '', description: '', category: 'General', type: 'EXPENSE', date: new Date().toISOString().split('T')[0] });
+    const [formData, setFormData] = useState({
+        amount: '',
+        description: '',
+        categoryId: '',
+        type: 'EXPENSE' as 'INCOME' | 'EXPENSE',
+        date: new Date().toISOString().split('T')[0]
+    });
 
     const fetchTransactions = async () => {
         try {
@@ -30,10 +44,37 @@ const DashboardPage = () => {
         }
     };
 
+    const fetchCategories = async () => {
+        try {
+            const { data } = await api.get('/categories');
+            setCategories(data);
+            // Set first available category as default if none selected
+            if (data.length > 0) {
+                const expenseCats = data.filter((c: Category) => c.type === 'EXPENSE');
+                if (expenseCats.length > 0) {
+                    setFormData(prev => ({ ...prev, categoryId: expenseCats[0].id }));
+                }
+            }
+        } catch {
+            console.error('Failed to fetch categories');
+        }
+    };
+
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchTransactions();
+        fetchCategories();
     }, []);
+
+    const filteredCategories = useMemo(() => {
+        return categories.filter(cat => cat.type === formData.type);
+    }, [categories, formData.type]);
+
+    // Update categoryId when type changes
+    useEffect(() => {
+        if (filteredCategories.length > 0) {
+            setFormData(prev => ({ ...prev, categoryId: filteredCategories[0].id }));
+        }
+    }, [formData.type, filteredCategories]);
 
     const stats = useMemo(() => {
         const income = transactions.filter(t => t.type === 'INCOME').reduce((acc, current) => acc + current.amount, 0);
@@ -61,7 +102,8 @@ const DashboardPage = () => {
     const categoryData = useMemo(() => {
         const cats: Record<string, number> = {};
         transactions.filter(t => t.type === 'EXPENSE').forEach(t => {
-            cats[t.category] = (cats[t.category] || 0) + t.amount;
+            const name = t.category?.name || 'Unknown';
+            cats[name] = (cats[name] || 0) + t.amount;
         });
         return Object.keys(cats).map(key => ({ name: key, value: cats[key] }));
     }, [transactions]);
@@ -71,7 +113,13 @@ const DashboardPage = () => {
         try {
             await api.post('/transactions', formData);
             setShowForm(false);
-            setFormData({ amount: '', description: '', category: 'General', type: 'EXPENSE', date: new Date().toISOString().split('T')[0] });
+            setFormData({
+                amount: '',
+                description: '',
+                categoryId: filteredCategories[0]?.id || '',
+                type: 'EXPENSE',
+                date: new Date().toISOString().split('T')[0]
+            });
             fetchTransactions();
         } catch {
             alert('Failed to add transaction');
@@ -133,14 +181,10 @@ const DashboardPage = () => {
                             </div>
                             <div className="input-group">
                                 <label>Category</label>
-                                <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                                    <option>General</option>
-                                    <option>Food</option>
-                                    <option>Rent</option>
-                                    <option>Transport</option>
-                                    <option>Entertainment</option>
-                                    <option>Salary</option>
-                                    <option>Freelance</option>
+                                <select value={formData.categoryId} onChange={e => setFormData({ ...formData, categoryId: e.target.value })}>
+                                    {filteredCategories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="input-group">
@@ -235,7 +279,7 @@ const DashboardPage = () => {
                                 <tr key={t.id}>
                                     <td>{new Date(t.date).toLocaleDateString()}</td>
                                     <td>{t.description}</td>
-                                    <td><span style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>{t.category}</span></td>
+                                    <td><span style={{ backgroundColor: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>{t.category?.name}</span></td>
                                     <td><span className={t.type === 'INCOME' ? 'income' : 'expense'}>{t.type}</span></td>
                                     <td style={{ fontWeight: 600 }}>${t.amount.toFixed(2)}</td>
                                     {t.user && <td style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t.user.name}</td>}

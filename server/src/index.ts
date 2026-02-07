@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import prisma from './db';
 import authRoutes from './routes/auth.routes';
 import transactionRoutes from './routes/transaction.routes';
+import categoryRoutes from './routes/category.routes';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/categories', categoryRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

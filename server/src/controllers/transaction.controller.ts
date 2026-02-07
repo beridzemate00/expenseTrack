@@ -10,12 +10,16 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
         let transactions;
         if (userRole === 'ADMIN') {
             transactions = await prisma.transaction.findMany({
-                include: { user: { select: { name: true, email: true } } },
+                include: {
+                    user: { select: { name: true, email: true } },
+                    category: { select: { name: true } }
+                },
                 orderBy: { date: 'desc' }
             });
         } else {
             transactions = await prisma.transaction.findMany({
                 where: { userId },
+                include: { category: { select: { name: true } } },
                 orderBy: { date: 'desc' }
             });
         }
@@ -26,7 +30,7 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
 };
 
 export const createTransaction = async (req: AuthRequest, res: Response) => {
-    const { amount, description, category, type, date } = req.body;
+    const { amount, description, categoryId, type, date } = req.body;
     const userId = req.user?.userId;
 
     try {
@@ -34,11 +38,12 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
             data: {
                 amount: parseFloat(amount),
                 description,
-                category,
+                categoryId,
                 type,
                 date: date ? new Date(date) : new Date(),
                 userId: userId!
-            }
+            },
+            include: { category: { select: { name: true } } }
         });
         res.status(201).json(transaction);
     } catch (error) {
@@ -48,7 +53,7 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
 
 export const updateTransaction = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
-    const { amount, description, category, type, date } = req.body;
+    const { amount, description, categoryId, type, date } = req.body;
     const userId = req.user?.userId;
     const userRole = req.user?.role;
 
@@ -65,10 +70,11 @@ export const updateTransaction = async (req: AuthRequest, res: Response) => {
             data: {
                 amount: amount ? parseFloat(amount) : undefined,
                 description,
-                category,
+                categoryId,
                 type,
                 date: date ? new Date(date) : undefined
-            }
+            },
+            include: { category: { select: { name: true } } }
         });
         res.json(transaction);
     } catch (error) {
