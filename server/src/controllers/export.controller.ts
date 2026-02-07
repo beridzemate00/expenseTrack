@@ -42,6 +42,7 @@ export const exportToCSV = async (req: AuthRequest, res: Response) => {
         res.setHeader('Content-Disposition', 'attachment; filename=transactions.csv');
         res.status(200).send(bom + csv);
     } catch (error) {
+        console.error('Export CSV Error:', error);
         res.status(500).json({ message: 'Error exporting data' });
     }
 };
