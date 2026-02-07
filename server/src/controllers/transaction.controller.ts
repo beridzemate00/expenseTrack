@@ -33,20 +33,25 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
     const { amount, description, categoryId, type, date } = req.body;
     const userId = req.user?.userId;
 
+    if (!categoryId) {
+        return res.status(400).json({ message: 'Category ID is required' });
+    }
+
     try {
         const transaction = await prisma.transaction.create({
             data: {
                 amount: parseFloat(amount),
                 description,
-                category: { connect: { id: categoryId } },
+                categoryId,
                 type,
                 date: date ? new Date(date) : new Date(),
-                user: { connect: { id: userId! } }
+                userId: userId!
             },
             include: { category: { select: { name: true } } }
         });
         res.status(201).json(transaction);
     } catch (error) {
+        console.error('Create transaction error:', error);
         res.status(500).json({ message: 'Error creating transaction' });
     }
 };
@@ -65,19 +70,25 @@ export const updateTransaction = async (req: AuthRequest, res: Response) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
+        const updateData: any = {
+            amount: amount ? parseFloat(amount) : undefined,
+            description,
+            type,
+            date: date ? new Date(date) : undefined
+        };
+
+        if (categoryId) {
+            updateData.category = { connect: { id: categoryId } };
+        }
+
         const transaction = await prisma.transaction.update({
             where: { id: id as string },
-            data: {
-                amount: amount ? parseFloat(amount) : undefined,
-                description,
-                category: categoryId ? { connect: { id: categoryId } } : undefined,
-                type,
-                date: date ? new Date(date) : undefined
-            },
+            data: updateData,
             include: { category: { select: { name: true } } }
         });
         res.json(transaction);
     } catch (error) {
+        console.error('Update transaction error:', error);
         res.status(500).json({ message: 'Error updating transaction' });
     }
 };
