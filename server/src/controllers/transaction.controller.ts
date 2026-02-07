@@ -42,10 +42,10 @@ export const createTransaction = async (req: AuthRequest, res: Response) => {
             data: {
                 amount: parseFloat(amount),
                 description,
-                categoryId,
+                category: { connect: { id: categoryId } },
                 type,
                 date: date ? new Date(date) : new Date(),
-                userId: userId!
+                user: { connect: { id: userId! } }
             },
             include: { category: { select: { name: true } } }
         });
