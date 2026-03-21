@@ -126,8 +126,9 @@ const DashboardPage = () => {
                 date: new Date().toISOString().split('T')[0]
             });
             fetchTransactions();
-        } catch {
-            alert('Failed to add transaction');
+        } catch (error: any) {
+            console.error('Failed to add transaction:', error.response?.data || error.message);
+            alert(`Failed to add transaction: ${error.response?.data?.message || 'Check console (F12) for details'}`);
         }
     };
 
