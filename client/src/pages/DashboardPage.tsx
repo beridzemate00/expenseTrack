@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import api from '../api/axios';
 import Navbar from '../components/Navbar';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Download, Plus, Trash2 } from 'lucide-react';
+import { Download, Plus, Trash2, FileText, FileSpreadsheet, ChevronDown } from 'lucide-react';
 
 interface Category {
     id: string;
@@ -28,6 +28,8 @@ const DashboardPage = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [showCategoryForm, setShowCategoryForm] = useState(false);
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const exportRef = useRef<HTMLDivElement>(null);
 
     const [formData, setFormData] = useState({
         amount: '',
@@ -69,6 +71,17 @@ const DashboardPage = () => {
     useEffect(() => {
         fetchTransactions();
         fetchCategories();
+    }, []);
+
+    // Close export menu on outside click
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+                setShowExportMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const filteredCategories = useMemo(() => {
@@ -154,9 +167,9 @@ const DashboardPage = () => {
         }
     };
 
-    const handleExport = async () => {
+    const handleExportCSV = async () => {
         try {
-            console.log('Starting CSV Export...');
+            setShowExportMenu(false);
             const response = await api.get('/transactions/export', { responseType: 'blob' });
             const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
             const link = document.createElement('a');
@@ -166,10 +179,22 @@ const DashboardPage = () => {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-            console.log('Export successful');
         } catch (error) {
             console.error('Export error:', error);
-            alert('Export failed. Please check the console for details.');
+            alert('Export failed.');
+        }
+    };
+
+    const handleExportReport = async () => {
+        try {
+            setShowExportMenu(false);
+            const response = await api.get('/transactions/export/report', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/html' }));
+            // Open in new tab for viewing
+            window.open(url, '_blank');
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export failed.');
         }
     };
 
@@ -186,9 +211,65 @@ const DashboardPage = () => {
                         <button className="btn-primary" onClick={() => setShowCategoryForm(!showCategoryForm)} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#6366f1' }}>
                             <Plus size={18} /> Add Category
                         </button>
-                        <button className="btn-primary" onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#475569' }}>
-                            <Download size={18} /> Export CSV
-                        </button>
+                        <div ref={exportRef} style={{ position: 'relative' }}>
+                            <button
+                                className="btn-primary"
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#475569' }}
+                            >
+                                <Download size={18} /> Export <ChevronDown size={14} style={{ transition: 'transform 0.2s', transform: showExportMenu ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                            </button>
+                            {showExportMenu && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 8px)',
+                                    right: 0,
+                                    background: 'linear-gradient(145deg, #1e293b, #0f172a)',
+                                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                                    borderRadius: '12px',
+                                    padding: '8px',
+                                    minWidth: '220px',
+                                    zIndex: 50,
+                                    animation: 'fadeIn 0.2s ease-out',
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+                                }}>
+                                    <button
+                                        onClick={handleExportCSV}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                                            padding: '12px 16px', background: 'transparent', color: '#e2e8f0',
+                                            border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                        <FileSpreadsheet size={18} style={{ color: '#10b981' }} />
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 600 }}>CSV File</div>
+                                            <div style={{ fontSize: '11px', color: '#64748b' }}>Plain spreadsheet data</div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={handleExportReport}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+                                            padding: '12px 16px', background: 'transparent', color: '#e2e8f0',
+                                            border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                    >
+                                        <FileText size={18} style={{ color: '#6366f1' }} />
+                                        <div style={{ textAlign: 'left' }}>
+                                            <div style={{ fontWeight: 600 }}>Pretty Report ✨</div>
+                                            <div style={{ fontSize: '11px', color: '#64748b' }}>Styled HTML with charts & summary</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
